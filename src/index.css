@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --im-bg-main: #0b0f19;
+    --im-bg-surface: #101726;
+    --im-bg-card: #141d30;
+    --im-bg-card-hover: #1a253d;
+    --im-primary: #e50914;
+    --im-primary-hover: #c40812;
+    --im-border: #1e293b;
+    --im-border-light: #2c3b53;
+  }
+
+  body {
+    background-color: var(--im-bg-main);
+    color: #f1f5f9;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+}
+
+/* Cinema Curved Screen */
+.cinema-screen {
+  height: 8px;
+  background: linear-gradient(90deg, transparent, #38bdf8 30%, #38bdf8 70%, transparent);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  box-shadow: 0 8px 30px rgba(56, 189, 248, 0.45);
+}
+
+.cinema-screen-glow {
+  background: radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.15) 0%, transparent 70%);
+}
+
+/* Seat Styling */
+.seat-btn {
+  width: 36px;
+  height: 34px;
+  margin: 3px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.seat-btn-available {
+  background-color: #172133;
+  color: #94a3b8;
+  border: 1px solid #233149;
+}
+
+.seat-btn-available:hover {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.seat-btn-selected {
+  background-color: #16a34a !important;
+  color: #ffffff !important;
+  border: 1px solid #22c55e !important;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.55);
+  transform: scale(1.06);
+}
+
+.seat-btn-booked {
+  background-color: #334155 !important;
+  color: #64748b !important;
+  border: 1px solid #334155 !important;
+  cursor: not-allowed !important;
+  opacity: 0.4;
+}
+
+/* Glassmorphism Navigation */
+.im-glass {
+  background: rgba(11, 15, 25, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Print Ticket Styles */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .ticket-card {
+    border: 2px dashed #000000 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+}
