@@ -2,7 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import API from '../services/api';
 import { Booking } from '../types';
-import { CheckCircle2, Printer, Ticket, ArrowRight, Film, MapPin, Calendar, Clock, QrCode } from 'lucide-react';
+import QRCode from 'qrcode';
+import {
+  CheckCircle2,
+  Printer,
+  Ticket,
+  ArrowRight,
+  Film,
+  MapPin,
+  Calendar,
+  Clock,
+  QrCode,
+  Download,
+  Copy,
+  Check,
+  X,
+  Maximize2,
+  ScanLine
+} from 'lucide-react';
 
 export const BookingConfirmation: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +30,12 @@ export const BookingConfirmation: React.FC = () => {
   const [loading, setLoading] = useState(!booking);
   const [error, setError] = useState('');
 
+  // QR Code States
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (!booking && id) {
       setLoading(true);
@@ -22,6 +45,74 @@ export const BookingConfirmation: React.FC = () => {
         .finally(() => setLoading(false));
     }
   }, [id, booking]);
+
+  // Generate QR code for the booking reference
+  const generateQr = async (targetBooking: Booking, openModalAfter: boolean = false) => {
+    try {
+      setIsGeneratingQr(true);
+      const payload = JSON.stringify({
+        ref: targetBooking.bookingReference,
+        movie: targetBooking.show.movie.title,
+        cinema: targetBooking.show.cinema.name,
+        seats: targetBooking.show ? targetBooking.seats : [],
+        hall: targetBooking.show.hallNumber,
+        time: targetBooking.show.showDateTime,
+      });
+
+      const url = await QRCode.toDataURL(payload, {
+        width: 380,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+        errorCorrectionLevel: 'M',
+      });
+
+      setQrDataUrl(url);
+      if (openModalAfter) {
+        setShowQrModal(true);
+      }
+    } catch (err) {
+      console.error('Failed to generate QR code', err);
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
+
+  // Pre-generate QR code when booking data arrives
+  useEffect(() => {
+    if (booking) {
+      generateQr(booking, false);
+    }
+  }, [booking]);
+
+  const handleOpenQrModal = () => {
+    if (booking) {
+      if (!qrDataUrl) {
+        generateQr(booking, true);
+      } else {
+        setShowQrModal(true);
+      }
+    }
+  };
+
+  const handleCopyReference = () => {
+    if (!booking) return;
+    navigator.clipboard.writeText(booking.bookingReference);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadQr = () => {
+    if (!qrDataUrl || !booking) return;
+    const link = document.createElement('a');
+    link.href = qrDataUrl;
+    link.download = `IMOVIES-PASS-${booking.bookingReference}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (loading) {
     return (
@@ -63,7 +154,7 @@ export const BookingConfirmation: React.FC = () => {
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Booking Confirmed!</h1>
         <p className="text-xs text-slate-400 mt-1">
-          Your e-ticket is issued and ready. A confirmation receipt has been added to your profile.
+          Your e-ticket is issued and ready. Present the entrance QR code at the cinema gate.
         </p>
       </div>
 
@@ -95,13 +186,35 @@ export const BookingConfirmation: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-[#0b0f19] p-3 rounded-xl border border-slate-800 flex items-center gap-3 shrink-0">
-              <div className="p-2 bg-white rounded-lg">
-                <QrCode className="w-12 h-12 text-slate-900" />
+            {/* Interactive QR Code Card */}
+            <div
+              onClick={handleOpenQrModal}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenQrModal(); }}
+              className="bg-[#0b0f19] hover:bg-slate-900/90 p-3 rounded-xl border border-slate-800 hover:border-slate-700 flex items-center gap-3 shrink-0 cursor-pointer transition-colors group"
+              title="Click to view full-screen QR entrance pass"
+            >
+              <div className="w-16 h-16 bg-white p-1 rounded-lg flex items-center justify-center relative overflow-hidden shadow-sm">
+                {qrDataUrl ? (
+                  <img
+                    src={qrDataUrl}
+                    alt={`QR Code for booking ${booking.bookingReference}`}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <QrCode className="w-12 h-12 text-slate-900" />
+                )}
               </div>
               <div className="text-[11px] text-slate-400 space-y-0.5">
-                <span className="block font-semibold text-slate-300">Scan at Entry</span>
+                <span className="flex items-center gap-1 font-semibold text-slate-200 group-hover:text-emerald-400 transition-colors">
+                  <ScanLine className="w-3.5 h-3.5 text-emerald-400" />
+                  Entrance QR Pass
+                </span>
                 <span className="block font-mono text-[10px] text-slate-500">{booking.bookingReference}</span>
+                <span className="text-[10px] text-slate-500 flex items-center gap-0.5">
+                  <Maximize2 className="w-2.5 h-2.5 text-slate-500" /> Click to enlarge
+                </span>
               </div>
             </div>
           </div>
@@ -165,8 +278,18 @@ export const BookingConfirmation: React.FC = () => {
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Action Buttons Row */}
       <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 no-print">
+        {/* Requested Button: Generate QR Code for Cinema Entrance */}
+        <button
+          onClick={handleOpenQrModal}
+          disabled={isGeneratingQr}
+          className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2 shadow-md shadow-emerald-950 transition-all cursor-pointer"
+        >
+          <QrCode className="w-4 h-4 text-emerald-200" />
+          <span>{isGeneratingQr ? 'Generating QR...' : 'Show Cinema Entrance QR'}</span>
+        </button>
+
         <button
           onClick={() => window.print()}
           className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors border border-slate-700"
@@ -191,6 +314,87 @@ export const BookingConfirmation: React.FC = () => {
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
+
+      {/* Full-Screen Cinema Entrance QR Code Modal */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 no-print">
+          <div className="bg-[#101726] border border-slate-700/80 rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl relative space-y-5">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-full transition-colors"
+              aria-label="Close QR Modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header */}
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto mb-2.5">
+                <ScanLine className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Cinema Entrance Scanner Pass</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Scan this barcode at the turnstile gate or usher scanner
+              </p>
+            </div>
+
+            {/* Scannable QR Code display */}
+            <div className="bg-white p-4 rounded-2xl mx-auto inline-block shadow-lg border-4 border-slate-200">
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt={`Entrance QR Code for ${booking.bookingReference}`}
+                  className="w-56 h-56 object-contain block mx-auto"
+                />
+              ) : (
+                <div className="w-56 h-56 flex items-center justify-center">
+                  <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+
+            {/* Booking Details Summary */}
+            <div className="bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Booking Reference:</span>
+                <span className="font-mono font-bold text-red-400">{booking.bookingReference}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="text-slate-400">Movie:</span>
+                <span className="font-semibold truncate max-w-[180px]">{show.movie.title}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="text-slate-400">Seats:</span>
+                <span className="font-bold text-white tabular-nums">{booking.seats.join(', ')} (Hall {show.hallNumber})</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="text-slate-400">Cinema:</span>
+                <span className="truncate max-w-[180px]">{show.cinema.name}</span>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={handleCopyReference}
+                className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 border border-slate-700 transition-colors"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                <span>{copied ? 'Copied Ref!' : 'Copy Code'}</span>
+              </button>
+
+              <button
+                onClick={handleDownloadQr}
+                className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-950 transition-all"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Save Image</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
